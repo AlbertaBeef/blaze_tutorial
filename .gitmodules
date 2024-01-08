@@ -1,0 +1,3 @@
+[submodule "MediaPipePyTorch"]
+	path = MediaPipePyTorch
+	url = https://github.com/zmurez/MediaPipePyTorch
