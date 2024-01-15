@@ -80,8 +80,11 @@ class BlazeBase():
     #    self.load_state_dict(torch.load(path))
     #    self.eval()  
 
-    def load_xmodel(self, model_path):
-        self.DEBUG = False
+    def load_xmodel(self, model_path,debug=False):
+        self.DEBUG = debug
+
+        if self.DEBUG:
+            print('[BlazeBase.load_xmodel] model_path=',model_path)
         
         # Create graph runner
         self.g = xir.Graph.deserialize(model_path)
@@ -93,7 +96,8 @@ class BlazeBase():
         # Get input scaling
         self.input_fixpos = self.input_tensor_buffers[0].get_tensor().get_attr("fix_point")
         self.input_scale = 2**self.input_fixpos
-        print('[BlazeBase] input_fixpos=',self.input_fixpos,' input_scale=',self.input_scale)
+        if self.DEBUG:
+            print('[BlazeBase.load_xmodel] input_fixpos=',self.input_fixpos,' input_scale=',self.input_scale)
 
         # Get input/output tensors dimensions
         self.inputShape = tuple(self.input_tensor_buffers[0].get_tensor().dims)
@@ -101,17 +105,66 @@ class BlazeBase():
         self.outputShape2 = tuple(self.output_tensor_buffers[1].get_tensor().dims)
         self.batchSize = self.inputShape[0]
     
-        print('[BlazeBase] batch size = ',self.batchSize)
-        print('[BlazeBase] input dimensions = ',self.inputShape)
-        print('[BlazeBase] output dimensions = ',self.outputShape1,self.outputShape2)
+        if self.DEBUG:
+            print('[BlazeBase.load_xmodel] batch size = ',self.batchSize)
+            print('[BlazeBase.load_xmodel] input dimensions = ',self.inputShape)
+            print('[BlazeBase.load_xmodel] output dimensions = ',self.outputShape1,self.outputShape2)
 
 
 class BlazeLandmark(BlazeBase):
     """ Base class for landmark models. """
 
+    def predict_landmarks(self, x):
+
+        if self.DEBUG:
+            print("[BlazeLandmark.predict_landmarks] x.shape=",x.shape)
+        
+        out1_list = []
+        out2_list = []
+        out3_list = []
+        
+        nb_images = x.shape[0]
+        for i in range(nb_images):
+
+            # 1. Preprocess the images into tensors:
+            if self.DEBUG:
+                print("[BlazeLandmark.predict_landmarks] prep input buffer ")
+            input_data = np.asarray(self.input_tensor_buffers[0])
+            input_data[0] = x[i,:,:,:]
+                               
+            # 2. Run the neural network:
+            """ Execute model on DPU """
+            if self.DEBUG:
+                print("[BlazeLandmark.predict_landmarks] execute[",i,"] ")
+            job_id = self.runner.execute_async(self.input_tensor_buffers, self.output_tensor_buffers)
+            self.runner.wait(job_id)
+                
+            output_size=[1,1,1]
+            for i in range(3):
+                output_size[i] = int(self.output_tensor_buffers[i].get_tensor().get_element_num() / self.batchSize)
+            if self.DEBUG:
+                print("[BlazeLandmark.predict_landmarks] output size :  ",  output_size ) 
+
+            if self.DEBUG:
+                print("[BlazeLandmark.predict_landmarks] prep output buffer ")
+            out1 = np.asarray(self.output_tensor_buffers[0]) 
+            out2 = np.asarray(self.output_tensor_buffers[1]) 
+            out3 = np.asarray(self.output_tensor_buffers[2]) 
+            
+            out1_list.append(out1.squeeze(0))
+            out2_list.append(out2.squeeze(0))
+            out3_list.append(out3.squeeze(0))
+                
+            if self.DEBUG:
+                print("[BlazeLandmark.predict_landmarks] done")
+
+        flag = np.asarray(out1_list)
+        handed = np.asarray(out2_list)
+        landmarks = np.asarray(out3_list)
+
+        return flag,handed,landmarks
+
     def extract_roi(self, frame, xc, yc, theta, scale):
-    #resolution = 256
-    #def extract_roi(frame, xc, yc, theta, scale):
         #print("[extract_roi] frame.shape = ", frame.shape," frame.dtype=", frame.dtype)
         #print("[extract_roi] xc.shape=", xc.shape," xc.dtype=", xc.dtype," xc=",xc)
         #print("[extract_roi] yc.shape=", yc.shape," yc.dtype=", yc.dtype," yc=",yc)
@@ -174,7 +227,8 @@ class BlazeLandmark(BlazeBase):
             affines.append(affine)
 
         if imgs:
-            imgs = np.stack(imgs).transpose(0, 3, 1, 2).astype('float32')
+            #imgs = np.stack(imgs).transpose(0, 3, 1, 2).astype('float32')
+            imgs = np.stack(imgs).astype('float32')
             affines = np.stack(affines).astype('float32')
         else:
             imgs = np.zeros((0, 3, res, res), dtype='float32')
@@ -284,35 +338,35 @@ class BlazeDetector(BlazeBase):
         #x = x.to(self._device())
         x = self._preprocess(x)
         if self.DEBUG:
-            print("[INFO] PalmDetector - prep input buffer ")
+            print("[BlazeDetector.predict_on_batch] prep input buffer ")
         input_data = np.asarray(self.input_tensor_buffers[0])
         input_data[0] = x
                                
         # 2. Run the neural network:
         """ Execute model on DPU """
         if self.DEBUG:
-            print("[INFO] PalmDetector - execute ")
+            print("[BlazeDetector.predict_on_batch] execute ")
         job_id = self.runner.execute_async(self.input_tensor_buffers, self.output_tensor_buffers)
         self.runner.wait(job_id)
                 
         output_size=[1,1]
         for i in range(2):
             output_size[i] = int(self.output_tensor_buffers[i].get_tensor().get_element_num() / self.batchSize)
-        #print("[INFO] output size :  ",  oself.utput_size )                
+        #print("[INFO] output size :  ",  self.output_size )                
 
         if self.DEBUG:
-            print("[INFO] PalmDetector - prep output buffer ")
+            print("[BlazeDetector.predict_on_batch] prep output buffer ")
         out1 = np.asarray(self.output_tensor_buffers[0]) #.reshape(-1,1)
         out2 = np.asarray(self.output_tensor_buffers[1]) #.reshape(-1,18)
                 
         # 3. Postprocess the raw predictions:
         if self.DEBUG:
-            print("[INFO] PalmDetector - post-processing - extracting detections ")
+            print("[BlazeDetector.predict_on_batch] post-processing - extracting detections ")
         detections = self._tensors_to_detections(out2, out1, self.anchors)
 
         # 4. Non-maximum suppression to remove overlapping detections:
         if self.DEBUG:
-            print("[INFO] PalmDetector - post-processing - non-maxima suppression ")
+            print("[BlazeDetector.predict_on_batch] post-processing - non-maxima suppression ")
         filtered_detections = []
         for i in range(len(detections)):
             wnms_detections = self._weighted_non_max_suppression(detections[i])
@@ -320,23 +374,19 @@ class BlazeDetector(BlazeBase):
                 filtered_detections.append(wnms_detections)
 
                 if self.DEBUG:
-                    print("[INFO] PalmDetector - post-processing - filtered_detections = ",len(filtered_detections),filtered_detections)
+                    print("[BlazeDetector.predict_on_batch] post-processing - filtered_detections = ",len(filtered_detections),filtered_detections)
                 
                 if len(filtered_detections) > 0:
                     normalized_detections = np.array(filtered_detections)[0]
                     if self.DEBUG:
-                        print("[INFO] PalmDetector - post-processing - normalized_detections = ",normalized_detections.shape,normalized_detections)
+                        print("[BlazeDetector.predict_on_batch] post-processing - normalized_detections = ",normalized_detections.shape,normalized_detections)
+
+        if self.DEBUG:
+            print("[BlazeDetector.predict_on_batch] done")
 
         return filtered_detections
 
     def detection2roi(self, detection):
-    #detection2roi_method = 'box'
-    #kp1 = 0
-    #kp2 = 2
-    #theta0 = np.pi/2
-    #dscale = 2.6
-    #dy = -0.5
-    #def detection2roi(detection):
         """ Convert detections from detector to an oriented bounding box.
 
         Adapted from:
@@ -386,19 +436,14 @@ class BlazeDetector(BlazeBase):
 
 
     def _tensors_to_detections(self, raw_box_tensor, raw_score_tensor, anchors):
-    #score_clipping_thresh = 100.0
-    ##min_score_thresh = 0.5 # too many false positives
-    ##min_score_thresh = 0.8 # still has false positives
-    #min_score_thresh = 0.7
-    #def _tensors_to_detections( raw_box_tensor, raw_score_tensor, anchors):
         if self.DEBUG:
-            print("[DEBUG] _tensors_to_detections ... entering")
+            print("[BlazeDetector._tensors_to_detections] ... entering")
 
         detection_boxes = self._decode_boxes(raw_box_tensor, self.anchors)
         #detection_boxes = detection_boxes[0]
             
         if self.DEBUG:
-            print("[DEBUG] _tensors_to_detections ... thresholding")
+            print("[BlazeDetector._tensors_to_detections] ... thresholding")
 
         thresh = self.score_clipping_thresh
         #raw_score_tensor = raw_score_tensor.clamp(-thresh, thresh)
@@ -408,7 +453,7 @@ class BlazeDetector(BlazeBase):
         detection_scores = np.squeeze(detection_scores, axis=-1)        
 
         if self.DEBUG:
-            print("[DEBUG] _tensors_to_detections ... min score thresholding (",self.min_score_thresh,")")
+            print("[BlazeDetector._tensors_to_detections] ... min score thresholding (",self.min_score_thresh,")")
         
         # Note: we stripped off the last dimension from the scores tensor
         # because there is only has one class. Now we can simply use a mask
@@ -423,7 +468,7 @@ class BlazeDetector(BlazeBase):
 
 
         if self.DEBUG:
-            print("[DEBUG] _tensors_to_detections ... processing loop")
+            print("[BlazeDetector._tensors_to_detections] ... processing loop")
 
         # Because each image from the batch can have a different number of
         # detections, process them one at a time using a loop.
@@ -442,23 +487,17 @@ class BlazeDetector(BlazeBase):
             output_detections.append(boxes_scores)
 
         if self.DEBUG:
-           print("[DEBUG] _tensors_to_detections ... done")
+           print("[BlazeDetector._tensors_to_detections] ... done")
 
         return output_detections
 
 
     def _decode_boxes(self, raw_boxes, anchors):
-    #x_scale = 256
-    #y_scale = 256
-    #h_scale = 256
-    #w_scale = 256
-    #num_keypoints = 7
-    #def _decode_boxes(raw_boxes, anchors):
         """Converts the predictions into actual coordinates using
         the anchor boxes. Processes the entire batch at once.
         """
         if self.DEBUG:
-            print("[DEBUG] _decode_boxes ... entering")
+            print("[BlazeDetector._decode_boxes] ... entering")
          
         #boxes = torch.zeros_like(raw_boxes)
         boxes = np.zeros( raw_boxes.shape )
@@ -482,14 +521,11 @@ class BlazeDetector(BlazeBase):
             boxes[..., offset + 1] = keypoint_y
 
         if self.DEBUG:
-            print("[DEBUG] _decode_boxes ... done")
+            print("[BlazeDetector._decode_boxes] ... done")
 
         return boxes
 
     def _weighted_non_max_suppression(self, detections):
-    #num_coords = 18
-    #min_suppression_threshold = 0.3
-    #def _weighted_non_max_suppression(detections):
         """The alternative NMS method as mentioned in the BlazeFace paper:
 
         "We replace the suppression algorithm with a blending strategy that

@@ -97,7 +97,7 @@ output_dir = './captured-images'
 if not os.path.exists(output_dir):      
     os.mkdir(output_dir)            # Create the output directory if it doesn't already exist
 
-cv2.namedWindow('BlazePalm demo')
+cv2.namedWindow('BlazeHandLandmark demo')
 
 
 # Open video
@@ -130,18 +130,12 @@ print (' --model2     : ', args.model2)
 
 
 palm_detector = BlazePalm()
-palm_detector.load_xmodel(args.model1)
+palm_detector.load_xmodel(args.model1,debug=False)
 palm_detector.load_anchors("anchors_palm.npy")
 palm_detector.min_score_thresh = .75
-palm_detector.DEBUG = False
 
 hand_regressor = BlazeHandLandmark()
-#hand_regressor.load_xmodel(args.model2)
-hand_regressor.DEBUG = False
-
-
-#anchors = np.load('./anchors_palm.npy')
-#print('[INFO] Loading anchors of size ',anchors.shape)
+hand_regressor.load_xmodel(args.model2,debug=False)
 
 
 print("================================================================")
@@ -202,6 +196,10 @@ while True:
             
             image = cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
             img1,img2,scale,pad=resize_pad(image)
+            #print("[INFO] img1.shape=",img1.shape, " img1.dtype=",img1.dtype)
+            #print("[INFO] img2.shape=",img2.shape, " img2.dtype=",img2.dtype)
+            #print("[INFO] scale=",scale)
+            #print("[INFO] pad=",pad)
             
             normalized_detections = palm_detector.predict_on_image(img1)
             if len(normalized_detections) > 0:
@@ -209,7 +207,14 @@ while True:
                 palm_detections = denormalize_detections(normalized_detections,scale,pad)
                     
                 xc,yc,scale,theta = palm_detector.detection2roi(palm_detections)
+                #print("[INFO] xc.shape=",xc.shape, " xc=",xc)
+                #print("[INFO] yc.shape=",yc.shape, " yc=",yc)
+                #print("[INFO] scale.shape=",scale.shape, " scale=",scale)
+                #print("[INFO] theta.shape=",theta.shape, " theta=",theta)
                 hand_img,hand_affine,hand_box = hand_regressor.extract_roi(image,xc,yc,theta,scale)
+                #print("[INFO] hand_img.shape=",hand_img.shape, " hand_img.dtype=",hand_img.dtype)
+                #print("[INFO] hand_affine.shape=",hand_affine.shape, " hand_affine=",hand_affine)
+                #print("[INFO] hand_box.shape=",hand_box.shape, " hand_box=",hand_box)
 
                 if bShowDebugImage:
                     # show the output image
@@ -218,6 +223,18 @@ while True:
                         debug_img = cv2.hconcat([debug_img,hand_img[i]])
                     debug_img = cv2.cvtColor(debug_img,cv2.COLOR_RGB2BGR)
                     cv2.imshow("Debug", debug_img)
+                
+                flags, handed, normalized_landmarks = hand_regressor.predict_landmarks(hand_img)
+                #print("[INFO] flags.shape=",flags.shape, " flags=",flags)
+                #print("[INFO] handed.shape=",handed.shape, " handed=",handed)
+                #print("[INFO] normalized_landmarks.shape=",normalized_landmarks.shape, " normalized_landmarks=",normalized_landmarks)
+                landmarks = hand_regressor.denormalize_landmarks(normalized_landmarks, hand_affine)
+                #print("[INFO] landmarks.shape=",landmarks.shape, " landmarks=",landmarks)
+
+                for i in range(len(flags)):
+                    landmark, flag = landmarks[i], flags[i]
+                    if True: #flag>.5:
+                        draw_landmarks(output, landmark[:,:2], HAND_CONNECTIONS, size=2)                
                    
                 draw_roi(output,hand_box)
                 draw_detections(output,palm_detections)
@@ -229,7 +246,7 @@ while True:
                 cv2.putText(output,rt_fps_message, (rt_fps_x,rt_fps_y),text_fontType,text_fontSize,text_color,text_lineSize,text_lineType)
             
             # show the output image
-            cv2.imshow("BlazePalm demo", output)
+            cv2.imshow("BlazeHandLandmark demo", output)
 
     if bStep == True:
         key = cv2.waitKey(0)
@@ -241,20 +258,20 @@ while True:
     #print(key)
     
     if key == 119: # 'w'
-        filename = ("blazepalm_frame%04d_input.tif"%(frame_count))
+        filename = ("blazehandlandmark_frame%04d_input.tif"%(frame_count))
         print("Capturing ",filename," ...")
         input_img = cv2.cvtColor(image,cv2.COLOR_RGB2BGR)
         cv2.imwrite(os.path.join(output_dir,filename),input_img)
 
-        filename = ("blazepalm_frame%04d_detection.tif"%(frame_count))
+        filename = ("blazehandlandmark_frame%04d_detection.tif"%(frame_count))
         print("Capturing ",filename," ...")
         cv2.imwrite(os.path.join(output_dir,filename),output)
         
         if bShowDebugImage:
-            filename = ("blazepalm_frame%04d_debug.tif"%(frame_count))
+            filename = ("blazehandlandmark_frame%04d_debug.tif"%(frame_count))
             print("Capturing ",filename," ...")
             cv2.imwrite(os.path.join(output_dir,filename),debug_img)
-      
+       
     if key == 115: # 's'
         bStep = True    
     
@@ -271,13 +288,13 @@ while True:
     if key == 100: # 'd'
         bShowDebugImage = not bShowDebugImage  
 
+    if key == 27 or key == 113: # ESC or 'q':
+        break
+
     if key == 118: # 'v'
         bVerbose = not bVerbose 
         palm_detector.DEBUG = bVerbose 
         hand_regressor.DEBUG = bVerbose
-
-    if key == 27 or key == 113: # ESC or 'q':
-        break
 
     # Update the real-time FPS counter
     rt_fps_count = rt_fps_count + 1
