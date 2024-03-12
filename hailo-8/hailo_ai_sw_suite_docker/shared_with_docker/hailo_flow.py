@@ -55,18 +55,18 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
     if model_type == ".tflite":
     
         if args.name == "palm_detection_v0_07":
-            start_node_names = ['input']
             assert (args.resolution==256), "palm_detection_v0_07 resolution should be 256"
+            start_node_names = ['input']
             #end_node_names = ['classificators','regressors']
             #end_node_names = ['classificator_8','classificator_16', 'classificator_32','regressor_8','regressor_16', 'regressor_32']
             end_node_names = ['activation_41', 'activation_23', 'activation_31', 'activation_39']
         elif args.name == "hand_landmark_v0_07":
-            start_node_names = ['input_1']
             assert (args.resolution==256), "hand_landmark_v0_07 resolution should be 256"
+            start_node_names = ['input_1']
             end_node_names = ['ld_21_3d','output_handflag','output_handedness']
         elif args.name == "palm_detection_lite" or args.name == "palm_detection_full":
-            start_node_names = ['input_1']
             assert (args.resolution==192), "palm_detection_lite/full resolution should be 192"
+            start_node_names = ['input_1']
             #end_node_names = ['Identity','Identity_1']
             #hailo_sdk_common.hailo_nn.exceptions.UnsupportedModelError: 1D form is not supported in layer Identity_1 of type ConcatLayer.
             #end_node_names = ['model_1/model/reshaped_classifier_palm_16/Reshape', 'model_1/model/reshaped_classifier_palm_8/Reshape','model_1/model/reshaped_regressor_palm_16/Reshape','model_1/model/reshaped_regressor_palm_8/Reshape']
@@ -82,13 +82,58 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
                 'model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_16_NO_PRUNING/Conv2D;model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
                 'model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_8_NO_PRUNING/Conv2D;model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1']
         elif args.name == "hand_landmark_lite" or args.name == "hand_landmark_full":
-            start_node_names = ['input_1']
             assert (args.resolution==224), "hand_landmark_lite/full resolution should be 192"
+            start_node_names = ['input_1']
             end_node_names = ['Identity','Identity_1','Identity_2','Identity_3']
+        elif args.name == "face_detection_short_range":
+            assert (args.resolution==128), "face_detection_short_range resolution should be 128"
+            start_node_names = ['input']
+            #end_node_names = ['regressors', 'classificators']
+            #end_node_names = ['reshape','reshape_2','reshape_1','reshape_3']
+            end_node_names = ['regressor_16', 'regressor_8', 'classificator_16', 'classificator_8']
+        elif args.name == "face_detection_full_range":
+            assert (args.resolution==192), "face_detection_full_range resolution should be 192"
+            start_node_names = ['input']
+            #end_node_names = ['reshaped_regressor_face_4', 'reshaped_classifier_face_4']
+            end_node_names = ['regressor_face_4', 'classifier_face_4']
+        elif args.name == "face_landmark":
+            assert (args.resolution==192), "face_landmark resolution should be 192"
+            start_node_names = ['input_1']
+            end_node_names = ['conv2d_31','conv2d_21']
+        elif args.name == "pose_detection":
+            assert (args.resolution==224), "pose_detection resolution should be 224"
+            start_node_names = ['input_1']
+            end_node_names = ['Identity','Identity_1']
+            # ValueError: cannot reshape array of size 96 into shape (16,1,1,24)
+            #end_node_names = ['model_1/model/reshaped_classifier_person_8/Reshape', 'model_1/model/reshaped_classifier_person_16/Reshape','model_1/model/reshaped_classifier_person_32/Reshape','model_1/model/reshaped_regressor_person_8/Reshape','model_1/model/reshaped_regressor_person_16/Reshape','model_1/model/reshaped_regressor_person_32/Reshape']
+            '''
+            end_node_names = [
+                'model_1/model/classifier_person_32_NO_PRUNING/BiasAdd;model_1/model/classifier_person_32_NO_PRUNING/Conv2D;model_1/model/classifier_person_32_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
+                'model_1/model/classifier_person_16_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
+                'model_1/model/classifier_person_8_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
+                'model_1/model/regressor_person_32_NO_PRUNING/BiasAdd;model_1/model/regressor_person_32_NO_PRUNING/Conv2D1', 
+                'model_1/model/regressor_person_16_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
+                'model_1/model/regressor_person_8_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1'
+            ]            
+            '''
+        elif args.name == "pose_landmark_lite" or args.name == "pose_landmark_full" or args.name == "pose_landmark_heavy":
+            assert (args.resolution==256), "pose_landmark_* resolution should be 256"
+            start_node_names = ['input_1']
+            #end_node_names = ['Identity','Identity_1','Identity_2','Identity_3','Identity_4']
+            end_node_names = [
+                'model_1/model/convld_3d/BiasAdd;model_1/model/convld_3d/Conv2D;model_1/model/convld_3d/BiasAdd/ReadVariableOp/resource1', 
+                'model_1/model/activation_poseflag/Sigmoid',
+                'Identity_2',
+                'Identity_3',
+                'model_1/model/convworld_3d/BiasAdd;model_1/model/convworld_3d/Conv2D;model_1/model/convworld_3d/BiasAdd/ReadVariableOp/resource1', 
+            ]                
         else:
             start_node_names = []
             end_node_names = []
 
+        print("[INFO] start_node_names : ",start_node_names)
+        print("[INFO] end_node_names : ",end_node_names)
+        
         hn, npz = runner.translate_tf_model(
             model_path, 
             model_name, 
@@ -132,7 +177,10 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
             start_node_names = ['input_1']
             assert (args.resolution==224), "hand_landmark_lite/full resolution should be 192"
             net_input_shapes={'input_1': [1, 3, args.resolution, args.resolution]}
-            end_node_names = ['Identity','Identity_1','Identity_2','Identity_3']
+            #end_node_names = ['Identity','Identity_1','Identity_2','Identity_3']
+            #[VStreamInfo("hand_landmark_lite/fc1"), VStreamInfo("hand_landmark_lite/fc4"), VStreamInfo("hand_landmark_lite/fc3"), VStreamInfo("hand_landmark_lite/fc2")]
+            end_node_names = ['Identity','Identity_2','Identity_3','Identity_1']
+            #[VStreamInfo("hand_landmark_lite/fc1"), VStreamInfo("hand_landmark_lite/fc4"), VStreamInfo("hand_landmark_lite/fc3"), VStreamInfo("hand_landmark_lite/fc2")]            
         else:
             start_node_names = []
             end_node_names = []
@@ -172,9 +220,6 @@ if ("optimize" in args.process or args.process == "all"):
 
     model_name = args.name
 
-    calib_dataset_file = "calib_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
-    calib_dataset = np.load(calib_dataset_file)
-
     hailo_model_har_name = f'{model_name}_hailo_model.har'
     assert os.path.isfile(hailo_model_har_name), 'Please provide valid path for HAR file'
     runner = ClientRunner(har=hailo_model_har_name)
@@ -185,11 +230,87 @@ if ("optimize" in args.process or args.process == "all"):
     # Otherwise we would have to normalize it before using it)
 
     # Batch size is 8 by default
-    #alls = 'normalization1 = normalization([255.0, 255.0, 255.0], [0.0, 0.0, 0.0])\n'
+    #alls = 'normalization1 = normalization([123.675, 116.28, 103.53], [58.395, 57.12, 57.375])\n'
 
-    # Load the model script to ClientRunner so it will be considered on optimization
-    #runner.load_model_script(alls)
+    if args.name == "palm_detection_lite" or args.name == "palm_detection_full":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
 
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
+        calib_dataset_file = "calib_palm_detection_192_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+
+    if args.name == "hand_landmark_lite" or args.name == "hand_landmark_full":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
+        calib_dataset_file = "calib_hand_landmark_224_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+    if args.name == "face_detection_short_range":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        calib_dataset_file = "calib_face_detection_128_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+    if args.name == "face_detection_full_range":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        calib_dataset_file = "calib_face_detection_192_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+    if args.name == "face_landmark":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        calib_dataset_file = "calib_face_landmark_192_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+    if args.name == "pose_detection":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        calib_dataset_file = "calib_pose_detection_224_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+    if args.name == "pose_landmark_lite" or args.name == "pose_landmark_full" or args.name == "pose_landmark_heavy":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        calib_dataset_file = "calib_pose_landmark_256_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+    
+    # Randomize calibration dataset
+    #print("[INFO] calib_dataset_file : ",calib_dataset_file )
+    #print("[INFO] calib_dataset (before shuffle) : ",calib_dataset.shape )
+    calib_dataset = np.take(calib_dataset,np.random.permutation(calib_dataset.shape[0]),axis=0,out=calib_dataset)
+    #print("[INFO] calib_dataset (after  shuffle) : ",calib_dataset.shape )
+        
     # Call Optimize to perform the optimization process
     runner.optimize(calib_dataset)
 

@@ -4,10 +4,10 @@ set -e
 RESUME_CONTAINER=false
 OVERRIDE_CONTAINER=false
 
-readonly CONTAINER_NAME="hailo_ai_sw_suite_2024-01_container"
+readonly CONTAINER_NAME="hailo_ai_sw_suite_2023-10_container"
 readonly XAUTH_FILE=/tmp/hailo_docker.xauth
-readonly DOCKER_TAR_FILE="hailo_ai_sw_suite_2024-01.tar"
-readonly DOCKER_IMAGE_NAME="hailo_ai_sw_suite_2024-01:1"
+readonly DOCKER_TAR_FILE="hailo_ai_sw_suite_2023-10.tar"
+readonly DOCKER_IMAGE_NAME="hailo_ai_sw_suite_2023-10:1"
 readonly NVIDIA_GPU_EXIST=$(lspci | grep "VGA compatible controller: NVIDIA")
 readonly NVIDIA_DOCKER_EXIST=$(dpkg -l | grep nvidia-docker)
 readonly SHARED_DIR="shared_with_docker"
