@@ -56,14 +56,15 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
     
         if args.name == "palm_detection_v0_07":
             assert (args.resolution==256), "palm_detection_v0_07 resolution should be 256"
-            start_node_names = ['input']
-            #end_node_names = ['classificators','regressors']
-            #end_node_names = ['classificator_8','classificator_16', 'classificator_32','regressor_8','regressor_16', 'regressor_32']
-            end_node_names = ['activation_41', 'activation_23', 'activation_31', 'activation_39']
+            start_node_names = ['input_1']
+            #end_node_names = ['classificators/concat','regressors/concat']
+            #end_node_names = ['reshape/Reshape','reshape_1/Reshape','reshape_2/Reshape','reshape_3/Reshape','reshape_4/Reshape','reshape_5/Reshape']
+            end_node_names = ['classificator_8/BiasAdd', 'classificator_16/BiasAdd', 'classificator_32/BiasAdd', 'regressor_8/BiasAdd', 'regressor_16/BiasAdd', 'regressor_32/BiasAdd']
         elif args.name == "hand_landmark_v0_07":
             assert (args.resolution==256), "hand_landmark_v0_07 resolution should be 256"
             start_node_names = ['input_1']
-            end_node_names = ['ld_21_3d','output_handflag','output_handedness']
+            #end_node_names = ['ld_21_3d','output_handflag','output_handedness']
+            end_node_names = ['convld_21_3d','activation_handflag','activation_handedness']
         elif args.name == "palm_detection_lite" or args.name == "palm_detection_full":
             assert (args.resolution==192), "palm_detection_lite/full resolution should be 192"
             start_node_names = ['input_1']
@@ -231,6 +232,29 @@ if ("optimize" in args.process or args.process == "all"):
 
     # Batch size is 8 by default
     #alls = 'normalization1 = normalization([123.675, 116.28, 103.53], [58.395, 57.12, 57.375])\n'
+
+    if args.name == "palm_detection_v0_07":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
+        calib_dataset_file = "calib_palm_detection_256_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
+
+
+    if args.name == "hand_landmark_v0_07":
+        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+
+        # Load the model script to ClientRunner so it will be considered on optimization
+        runner.load_model_script(alls)
+
+        # Specify calibration dataset
+        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
+        calib_dataset_file = "calib_hand_landmark_256_dataset.npy"
+        calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "palm_detection_lite" or args.name == "palm_detection_full":
         alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'

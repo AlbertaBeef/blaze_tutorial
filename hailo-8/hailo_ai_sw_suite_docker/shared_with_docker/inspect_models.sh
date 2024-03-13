@@ -17,6 +17,7 @@ model_list=(
 
 # TFLite models
 #model_palm_detector_v0_07=("palm_detection_v0_07","models/palm_detection_v0_07.tflite",256)
+#  UnsupportedOperationError in op conv2d_transpose: CUSTOM operation is unsupported
 model_palm_detector_v0_07=("palm_detection_v0_07","models/palm_detection_without_custom_op.tflite",256)
 model_hand_landmark_v0_07=("hand_landmark_v0_07","models/hand_landmark_v0_07.tflite",256)
 
@@ -50,28 +51,6 @@ model_list=(
 	model_pose_landmark_v0_10_heavy[@]		
 )
 
-# Do not optimize/compile
-model_list=(
-	model_palm_detector_v0_07[@]
-	model_pose_detector_v0_10[@]
-	model_pose_landmark_v0_10_full[@]
-	model_pose_landmark_v0_10_heavy[@]		
-)
-
-# Successfully optimize/compile
-model_list=(
-	model_hand_landmark_v0_07[@]
-	model_palm_detector_v0_10_lite[@]
-	model_palm_detector_v0_10_full[@]
-	model_hand_landmark_v0_10_lite[@]
-	model_hand_landmark_v0_10_full[@]
-	model_face_detector_v0_10_short[@]
-	model_face_detector_v0_10_full[@]
-	model_face_landmark_v0_10[@]
-	model_pose_landmark_v0_10_lite[@]
-)
-
-
 model_count=${#model_list[@]}
 #echo $model_count
 
@@ -86,8 +65,12 @@ do
 	model_file=${model_array[1]}
 	input_resolution=${model_array[2]}
 
-	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all
+	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect
 
-	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all | tee deploy_${model_name}.log
+	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect | tee inspect_${model_name}.log
+
+	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse
+
+	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse | tee parse_${model_name}.log
 
 done
