@@ -43,7 +43,7 @@ else:
  
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument('-a', '--arch'       , type=str,  default="", help="Hailo HW architecture.  Default is 'hailo8'.")
+ap.add_argument('-a', '--arch'       , type=str,  default="", help="Vitis-AI DPU architecture.  Default is 'DPUCZDX8G_ISA1_B4096'.")
 ap.add_argument('-n', '--name'       , type=str,  default="palm_detection_lite", help="Model name. Default is 'palm_detection_lite'")
 ap.add_argument('-r', '--resolution' , type=int,  default=192, help="Input resolution.  Default is 192 for 192x192.")
 ap.add_argument('-p', '--process'    , type=str,  default="all", help="Command seperated list of processes to run ( 'inspect', 'quantize', 'all'=='parse,calibrate,test' ). Default is 'all'")

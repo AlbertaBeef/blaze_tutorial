@@ -16,15 +16,12 @@ model_list=(
     model_pose_detector_v0_07[@]
     model_pose_landmark_v0_07[@]
 )
-model_list=(
-    model_face_detector_v0_07_back[@]
-    model_face_detector_v0_07_front[@]
-    model_face_landmark_v0_07[@]
-)
+
 
 # Versal AI Edge
 dpu_c20b14=("C20B14","./arch/C20B14/arch-c20b14.json")
-dpu_c20b1=("C20B1","./arch/C20B14/arch-c20b1.json")
+dpu_c20b4=("C20B4","./arch/C20B4/arch-c20b4.json")
+dpu_c20b1=("C20B1","./arch/C20B1/arch-c20b1.json")
 # Zynq-UltraScale+
 dpu_b4096=("B4096","./arch/B4096/arch-zcu104.json")
 dpu_b3136=("B3136","./arch/B3136/arch-kv260.json")
@@ -35,6 +32,7 @@ dpu_b128=("B128","./arch/B128/arch-b128-lr.json")
 #
 dpu_arch_list=(
     dpu_c20b14[@]
+    dpu_c20b4[@]
     dpu_c20b1[@]
     dpu_b4096[@]
     dpu_b3136[@]
@@ -43,6 +41,7 @@ dpu_arch_list=(
     dpu_b512[@]
     dpu_b128[@]
 )
+
 
 model_count=${#model_list[@]}
 #echo $model_count
@@ -77,7 +76,7 @@ do
         dpu_arch=${dpu_array[0]}
         dpu_json=${dpu_array[1]}
         
-        echo vai_c_xir -x ./quantize_result/${model_name}_int.xmodel -a ${dpu_json} -o ./models_blaze/${model_name}/${dpu_arch} -n ${model_name}
-        vai_c_xir -x ./quantize_result/${model_name}_int.xmodel -a ${dpu_json} -o ./models_blaze/${model_name}/${dpu_arch} -n ${model_name} | tee deploy_${model_name}_compile.log
+        echo vai_c_xir -x ./quantize_result/${model_name}_int.xmodel -a ${dpu_json} -o ./models/${model_name}/${dpu_arch} -n ${model_name}
+        vai_c_xir -x ./quantize_result/${model_name}_int.xmodel -a ${dpu_json} -o ./models/${model_name}/${dpu_arch} -n ${model_name} | tee deploy_${model_name}_compile.log
     done
 done
