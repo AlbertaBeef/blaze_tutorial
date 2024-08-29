@@ -65,12 +65,12 @@ do
 	model_file=${model_array[1]}
 	input_resolution=${model_array[2]}
 
-	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect
+	echo python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect
 
-	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect | tee inspect_${model_name}.log
+	python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process inspect | tee inspect_${model_name}.log
 
-	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse
+	echo python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse
 
-	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse | tee parse_${model_name}.log
+	python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process parse | tee parse_${model_name}.log
 
 done

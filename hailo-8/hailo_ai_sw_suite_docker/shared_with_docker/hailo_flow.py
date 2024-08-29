@@ -104,10 +104,9 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
         elif args.name == "pose_detection":
             assert (args.resolution==224), "pose_detection resolution should be 224"
             start_node_names = ['input_1']
-            end_node_names = ['Identity','Identity_1']
+            #end_node_names = ['Identity','Identity_1']
             # ValueError: cannot reshape array of size 96 into shape (16,1,1,24)
             #end_node_names = ['model_1/model/reshaped_classifier_person_8/Reshape', 'model_1/model/reshaped_classifier_person_16/Reshape','model_1/model/reshaped_classifier_person_32/Reshape','model_1/model/reshaped_regressor_person_8/Reshape','model_1/model/reshaped_regressor_person_16/Reshape','model_1/model/reshaped_regressor_person_32/Reshape']
-            '''
             end_node_names = [
                 'model_1/model/classifier_person_32_NO_PRUNING/BiasAdd;model_1/model/classifier_person_32_NO_PRUNING/Conv2D;model_1/model/classifier_person_32_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
                 'model_1/model/classifier_person_16_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
@@ -116,7 +115,6 @@ if ("parse" in args.process or "profile" in args.process or args.process == "all
                 'model_1/model/regressor_person_16_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
                 'model_1/model/regressor_person_8_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1'
             ]            
-            '''
         elif args.name == "pose_landmark_lite" or args.name == "pose_landmark_full" or args.name == "pose_landmark_heavy":
             assert (args.resolution==256), "pose_landmark_* resolution should be 256"
             start_node_names = ['input_1']
@@ -232,99 +230,69 @@ if ("optimize" in args.process or args.process == "all"):
 
     # Batch size is 8 by default
     #alls = 'normalization1 = normalization([123.675, 116.28, 103.53], [58.395, 57.12, 57.375])\n'
+    #alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
+    alls_lines = [
+        'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n',
+
+        # Batch size is 8 by default; 2 was used for stability on PCs with low amount of RAM / VRAM
+        #'model_optimization_flavor(optimization_level=2, compression_level=4, batch_size=2)\n',
+        'model_optimization_flavor(optimization_level=2, compression_level=1, batch_size=2)\n',
+
+        # The following line is needed for really small models, when the compression_level is always reverted back to 0.'
+        # To force using compression_level with small models, the following line should be used (compression level=4 equals to 80% 4-bit):
+        #'model_optimization_config(compression_params, auto_4bit_weights_ratio=0.8)\n'
+        'model_optimization_config(compression_params, auto_4bit_weights_ratio=0.6)\n',
+        # The application of the compression could be seen by the [info] messages: "Assigning 4bit weight to layer .."
+        
+        # Increase control utilization to reduce number of contexts
+        'resources_param(strategy=greedy,max_control_utilization=0.80)\n'      
+    ]
+    alls = "".join(alls_lines)
+    
+    # Load the model script to ClientRunner so it will be considered on optimization
+    runner.load_model_script(alls)
 
     if args.name == "palm_detection_v0_07":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
-        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
         calib_dataset_file = "calib_palm_detection_256_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
-
     if args.name == "hand_landmark_v0_07":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
-        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
         calib_dataset_file = "calib_hand_landmark_256_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "palm_detection_lite" or args.name == "palm_detection_full":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
-        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
         calib_dataset_file = "calib_palm_detection_192_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
-
     if args.name == "hand_landmark_lite" or args.name == "hand_landmark_full":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
-        #calib_dataset_file = "calib_hand_dataset_"+str(args.resolution)+"x"+str(args.resolution)+".npy"
         calib_dataset_file = "calib_hand_landmark_224_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "face_detection_short_range":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
         calib_dataset_file = "calib_face_detection_128_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "face_detection_full_range":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
         calib_dataset_file = "calib_face_detection_192_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "face_landmark":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
         calib_dataset_file = "calib_face_landmark_192_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "pose_detection":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
         calib_dataset_file = "calib_pose_detection_224_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)
 
     if args.name == "pose_landmark_lite" or args.name == "pose_landmark_full" or args.name == "pose_landmark_heavy":
-        alls = 'input_normalization = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])\n'
-
-        # Load the model script to ClientRunner so it will be considered on optimization
-        runner.load_model_script(alls)
-
         # Specify calibration dataset
         calib_dataset_file = "calib_pose_landmark_256_dataset.npy"
         calib_dataset = np.load(calib_dataset_file)

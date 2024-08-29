@@ -1,22 +1,6 @@
-# ONNX models
-model_palm_detector_v0_07=("palm_detection_v0_07","models/palm_detection_v0_07/model_float32.onnx",256)
-model_palm_detector_v0_10_lite=("palm_detection_lite","models/palm_detection_lite/model_float32.onnx",192)
-model_palm_detector_v0_10_full=("palm_detection_full","models/palm_detection_full/model_float32.onnx",192)
-model_hand_landmark_v0_07=("hand_landmark_v0_07","models/hand_landmark_v0_07/model_float32.onnx",256)
-model_hand_landmark_v0_10_lite=("hand_landmark_lite","models/hand_landmark_lite/model_float32.onnx",224)
-model_hand_landmark_v0_10_full=("hand_landmark_full","models/hand_landmark_full/model_float32.onnx",224)
-
-model_list=(
-	model_palm_detector_v0_07[@]
-	model_palm_detector_v0_10_lite[@]
-	model_palm_detector_v0_10_full[@]
-	model_hand_landmark_v0_07[@]
-	model_hand_landmark_v0_10_lite[@]
-	model_hand_landmark_v0_10_full[@]
-)
-
 # TFLite models
 #model_palm_detector_v0_07=("palm_detection_v0_07","models/palm_detection_v0_07.tflite",256)
+#  UnsupportedOperationError in op conv2d_transpose: CUSTOM operation is unsupported
 model_palm_detector_v0_07=("palm_detection_v0_07","models/palm_detection_without_custom_op.tflite",256)
 model_hand_landmark_v0_07=("hand_landmark_v0_07","models/hand_landmark_v0_07.tflite",256)
 
@@ -50,15 +34,19 @@ model_list=(
 	model_pose_landmark_v0_10_heavy[@]		
 )
 
-# Do not optimize/compile
+# Did not optimized/compiled
+model_list=(
+	model_pose_detector_v0_10[@]
+)
+
+# Successfully optimized/compiled with batch=2
 model_list=(
 	model_palm_detector_v0_07[@]
-	model_pose_detector_v0_10[@]
 	model_pose_landmark_v0_10_full[@]
 	model_pose_landmark_v0_10_heavy[@]		
 )
 
-# Successfully optimize/compile
+# Successfully optimized/compiled with batch=8
 model_list=(
 	model_hand_landmark_v0_07[@]
 	model_palm_detector_v0_10_lite[@]
@@ -69,6 +57,14 @@ model_list=(
 	model_face_detector_v0_10_full[@]
 	model_face_landmark_v0_10[@]
 	model_pose_landmark_v0_10_lite[@]
+)
+
+# palm detection & hand landmarks - v0.10 models
+model_list=(
+	model_palm_detector_v0_10_lite[@]
+	model_palm_detector_v0_10_full[@]
+	model_hand_landmark_v0_10_lite[@]
+	model_hand_landmark_v0_10_full[@]
 )
 
 
@@ -86,8 +82,8 @@ do
 	model_file=${model_array[1]}
 	input_resolution=${model_array[2]}
 
-	echo python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all
+	echo python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all
 
-	python3 hailo_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all | tee deploy_${model_name}.log
+	python3 hailo_flow.py --arch hailo8 --name ${model_name} --model ${model_file} --resolution ${input_resolution} --process all | tee deploy_${model_name}.log
 
 done
