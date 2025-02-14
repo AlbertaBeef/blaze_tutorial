@@ -54,6 +54,8 @@ if ("inspect" in args.process):
 
     model1_path = args.model1
     model1_name = args.name1
+    model1_size = args.resolution1
+
     
     file1_name, model1_type = os.path.splitext(model1_path)
     if model1_type == ".tflite":
@@ -62,7 +64,11 @@ if ("inspect" in args.process):
         print("[ERROR] ONNX model : ",model1_path)    
     else:
         print("[ERROR] Unknown model type : ",model1_type)    
-        
+
+    model2_path = args.model2
+    model2_name = args.name2
+    model2_size = args.resolution2        
+
     file2_name, model2_type = os.path.splitext(model2_path)
     if model2_type == ".tflite":
         print("[INFO] TensorFlow-lite model : ",model2_path)    
@@ -71,7 +77,7 @@ if ("inspect" in args.process):
     else:
         print("[ERROR] Unknown model type : ",model2_type)    
         
-    nc = NeuralCompiler(num_chips=4, models={model1_path,model2_path}, verbose=1, dfp_fname=None, effort="Lazy", show_optimization=False, autocrop=True)
+    nc = NeuralCompiler(num_chips=4, models=[model1_path,model2_path], verbose=1, dfp_fname=None, effort="Lazy", show_optimization=False, autocrop=True)
     dfp = nc.run()
 
 #
@@ -96,10 +102,6 @@ if ("compile" in args.process or args.process == "all"):
     model1_name = args.name1
     model1_size = args.resolution1
 
-    model2_path = args.model2
-    model2_name = args.name2
-    model2_size = args.resolution2
-
     file1_name, model1_type = os.path.splitext(model1_path)
     if model1_type == ".tflite":
         print("[INFO] tflite model   : ",model1_path) 
@@ -120,19 +122,17 @@ if ("compile" in args.process or args.process == "all"):
             model1_outputs = "classificator_8/BiasAdd,classificator_16/BiasAdd,classificator_32/BiasAdd,regressor_8/BiasAdd,regressor_16/BiasAdd,regressor_32/BiasAdd"
         elif model1_name == "palm_detection_lite" or model1_name == "palm_detection_full":
             assert (model1_size==192), "palm_detection_lite/full resolution should be 192"
-            #start_node_names = ['input_1']
-            #end_node_names = [
-            #    'model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_16_NO_PRUNING/Conv2D;model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
-            #    'model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_8_NO_PRUNING/Conv2D;model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
-            #    'model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_16_NO_PRUNING/Conv2D;model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 
-            #    'model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_8_NO_PRUNING/Conv2D;model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1']
+            #Automatically selected points for model cropping:
+            #  Inputs:
+            #    • model_1/model/batch_normalization/FusedBatchNormV3;model_1/model/depthwise_conv2d_3/depthwise;model_1/model/conv2d/Conv2D1
+            #  Outputs:
+            #    • model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_16_NO_PRUNING/Conv2D;model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1
+            #    • model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_8_NO_PRUNING/Conv2D;model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1
+            #    • model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_16_NO_PRUNING/Conv2D;model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1
+            #    • model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_8_NO_PRUNING/Conv2D;model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1
             #
-            #MPU 0 input port 0: {'model_index': 0, 'layer_name': 'input_1', 'shape': [192, 192, 1, 3]}
-            #MPU 3 output port 0: {'model_index': 0, 'layer_name': 'model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_16_NO_PRUNING/Conv2D;model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [12, 12, 1, 6]}
-            #MPU 3 output port 1: {'model_index': 0, 'layer_name': 'model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_16_NO_PRUNING/Conv2D;model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [12, 12, 1, 108]}
-            #MPU 3 output port 2: {'model_index': 0, 'layer_name': 'model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_8_NO_PRUNING/Conv2D;model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [24, 24, 1, 2]}
-            #MPU 3 output port 3: {'model_index': 0, 'layer_name': 'model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_8_NO_PRUNING/Conv2D;model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [24, 24, 1, 36]}
             model1_inputs = "input_1"
+            #model1_inputs = "model_1/model/batch_normalization/FusedBatchNormV3;model_1/model/depthwise_conv2d_3/depthwise;model_1/model/conv2d/Conv2D1model_1/model/batch_normalization/FusedBatchNormV3;model_1/model/depthwise_conv2d_3/depthwise;model_1/model/conv2d/Conv2D1"
             model1_outputs = "model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_16_NO_PRUNING/Conv2D;model_1/model/classifier_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd;model_1/model/classifier_palm_8_NO_PRUNING/Conv2D;model_1/model/classifier_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_16_NO_PRUNING/Conv2D;model_1/model/regressor_palm_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd;model_1/model/regressor_palm_8_NO_PRUNING/Conv2D;model_1/model/regressor_palm_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1"
         elif model1_name == "face_detection_short_range":
             assert (model1_size==128), "face_detection_short_range resolution should be 128"
@@ -168,9 +168,15 @@ if ("compile" in args.process or args.process == "all"):
             #    'model_1/model/regressor_person_8_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1'
             #]            
             #
-            #UNKNOWN ...
+            #MPU 0 input port 0: {'model_index': 0, 'layer_name': 'input_1', 'shape': [224, 224, 1, 3]}
+            #MPU 3 output port 0: {'model_index': 0, 'layer_name': 'model_1/model/classifier_person_8_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [28, 28, 1, 2]}
+            #MPU 3 output port 1: {'model_index': 0, 'layer_name': 'model_1/model/regressor_person_8_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [28, 28, 1, 24]}
+            #MPU 3 output port 2: {'model_index': 0, 'layer_name': 'model_1/model/classifier_person_16_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [14, 14, 1, 2]}
+            #MPU 3 output port 3: {'model_index': 0, 'layer_name': 'model_1/model/regressor_person_16_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [14, 14, 1, 24]}
+            #MPU 3 output port 4: {'model_index': 0, 'layer_name': 'model_1/model/classifier_person_32_NO_PRUNING/BiasAdd;model_1/model/classifier_person_32_NO_PRUNING/Conv2D;model_1/model/classifier_person_32_NO_PRUNING/BiasAdd/ReadVariableOp/resource1', 'shape': [7, 7, 1, 6]}
+            #MPU 3 output port 5: {'model_index': 0, 'layer_name': 'model_1/model/regressor_person_32_NO_PRUNING/BiasAdd;model_1/model/regressor_person_32_NO_PRUNING/Conv2D1', 'shape': [7, 7, 1, 72]}
             model1_inputs = "input_1"
-            model1_outputs = ""
+            model1_outputs = "model_1/model/classifier_person_32_NO_PRUNING/BiasAdd;model_1/model/classifier_person_32_NO_PRUNING/Conv2D;model_1/model/classifier_person_32_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/classifier_person_16_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/classifier_person_8_NO_PRUNING/BiasAdd;model_1/model/classifier_person_16_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/Conv2D;model_1/model/classifier_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/regressor_person_32_NO_PRUNING/BiasAdd;model_1/model/regressor_person_32_NO_PRUNING/Conv2D1,model_1/model/regressor_person_16_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_16_NO_PRUNING/BiasAdd/ReadVariableOp/resource1,model_1/model/regressor_person_8_NO_PRUNING/BiasAdd;model_1/model/regressor_person_16_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/Conv2D;model_1/model/regressor_person_8_NO_PRUNING/BiasAdd/ReadVariableOp/resource1"            
         else:
             model1_inputs = ""
             model1_outputs = ""
@@ -202,15 +208,17 @@ if ("compile" in args.process or args.process == "all"):
             model2_outputs = "convld_21_3d,conv_handflag,conv_handedness"
         elif model2_name == "hand_landmark_lite" or model2_name == "hand_landmark_full":
             assert (model2_size==224), "hand_landmark_lite/full resolution should be 192"
-            #start_node_names = ['input_1']
-            #end_node_names = ['Identity','Identity_1','Identity_2','Identity_3']
+            #Automatically selected points for model cropping:
+            #  Inputs:
+            #    • model_1/model/re_lu/Relu6;model_1/model/batch_normalization/FusedBatchNormV3;model_1/model/batch_normalization_1/FusedBatchNormV3;model_1/model/depthwise_conv2d/depthwise;model_1/model/conv2d_9/Conv2D;model_1/model/conv2d/Conv2D
+            #  Outputs:
+            #    • Identity
+            #    • Identity_3
+            #    • model_1/model/conv_handedness/MatMul;model_1/model/conv_handedness/BiasAdd
+            #    • model_1/model/conv_handflag/MatMul;model_1/model/conv_handflag/BiasAdd
             #
-            #MPU 0 input port 0: {'model_index': 0, 'layer_name': 'input_1', 'shape': [224, 224, 1, 3]}
-            #MPU 3 output port 0: {'model_index': 0, 'layer_name': 'model_1/model/conv_handedness/MatMul;model_1/model/conv_handedness/BiasAdd', 'shape': [1, 1, 1, 1]}
-            #MPU 3 output port 1: {'model_index': 0, 'layer_name': 'model_1/model/conv_handflag/MatMul;model_1/model/conv_handflag/BiasAdd', 'shape': [1, 1, 1, 1]}
-            #MPU 3 output port 2: {'model_index': 0, 'layer_name': 'Identity', 'shape': [1, 1, 1, 63]}
-            #MPU 3 output port 3: {'model_index': 0, 'layer_name': 'Identity_3', 'shape': [1, 1, 1, 63]}
             model2_inputs = "input_1"
+            #model2_inputs = "model_1/model/re_lu/Relu6;model_1/model/batch_normalization/FusedBatchNormV3;model_1/model/batch_normalization_1/FusedBatchNormV3;model_1/model/depthwise_conv2d/depthwise;model_1/model/conv2d_9/Conv2D;model_1/model/conv2d/Conv2D"
             model2_outputs = "Identity,model_1/model/conv_handedness/MatMul;model_1/model/conv_handedness/BiasAdd,model_1/model/conv_handflag/MatMul;model_1/model/conv_handflag/BiasAdd,Identity_3"
         elif model2_name == "face_landmark":
             assert (model2_size==192), "face_landmark resolution should be 192"
@@ -253,14 +261,23 @@ if ("compile" in args.process or args.process == "all"):
 
     dfp_name = args.dfp
     print("[INFO] Generating DFP : ",dfp_name)
-    models_input_shapes = [ str(model1_size)+","+str(model1_size)+",3", str(model2_size)+","+str(model2_size)+",3" ]
-    print("[INFO] input_shapes   : ",models_input_shapes)
-    models_inputs = model1_inputs + "|" + model2_inputs
-    models_outputs = model1_outputs + "|" + model2_outputs
-    print("[INFO] models_inputs  : ",models_inputs)
-    print("[INFO] models_outputs : ",models_outputs)
-        
-    nc = NeuralCompiler(num_chips=4, models=[model1_path,model2_path], verbose=1, dfp_fname=dfp_name, effort="Hard", show_optimization=True, autocrop=False, input_shapes=models_input_shapes, inputs=models_inputs, outputs=models_outputs )
+
+    if model2_name == "hand_landmark_lite" or model2_name == "hand_landmark_full":        
+        models_input_shapes = [ str(model2_size)+","+str(model2_size)+",3", str(model1_size)+","+str(model1_size)+",3" ]
+        print("[INFO] input_shapes   : ",models_input_shapes)
+        models_inputs = model2_inputs + "|" + model1_inputs
+        models_outputs = model2_outputs + "|" + model1_outputs
+        print("[INFO] models_inputs  : ",models_inputs)
+        print("[INFO] models_outputs : ",models_outputs)
+        nc = NeuralCompiler(num_chips=4, models=[model2_path,model1_path], verbose=1, dfp_fname=dfp_name, effort="Hard", show_optimization=True, autocrop=True)
+    else:
+        models_input_shapes = [ str(model1_size)+","+str(model1_size)+",3", str(model2_size)+","+str(model2_size)+",3" ]
+        print("[INFO] input_shapes   : ",models_input_shapes)
+        models_inputs = model1_inputs + "|" + model2_inputs
+        models_outputs = model1_outputs + "|" + model2_outputs
+        print("[INFO] models_inputs  : ",models_inputs)
+        nc = NeuralCompiler(num_chips=4, models=[model1_path,model2_path], verbose=1, dfp_fname=dfp_name, effort="Hard", show_optimization=True, autocrop=False, input_shapes=models_input_shapes, inputs=models_inputs, outputs=models_outputs )
+
     dfp = nc.run()
 
 

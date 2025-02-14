@@ -18,6 +18,11 @@ model_pose_landmark_v0_10_lite=("pose_landmark_lite","models/pose_landmark_lite.
 model_pose_landmark_v0_10_full=("pose_landmark_full","models/pose_landmark_full.tflite",256)
 model_pose_landmark_v0_10_heavy=("pose_landmark_heavy","models/pose_landmark_heavy.tflite",256)
 
+# these only work when reverting tensorflow back to 2.16.2 (requires modified venv)
+model_list=(
+	model_pose_detector_v0_10[@]
+)
+
 model_list=(
 	model_palm_detector_v0_07[@]
 	model_hand_landmark_v0_07[@]
@@ -28,13 +33,10 @@ model_list=(
 	model_face_detector_v0_10_short[@]
 	model_face_detector_v0_10_full[@]
 	model_face_landmark_v0_10[@]	
-	model_pose_detector_v0_10[@]
 	model_pose_landmark_v0_10_lite[@]
 	model_pose_landmark_v0_10_full[@]
 	model_pose_landmark_v0_10_heavy[@]		
 )
-
-
 
 model_count=${#model_list[@]}
 #echo $model_count

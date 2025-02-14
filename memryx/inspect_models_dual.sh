@@ -31,6 +31,7 @@ models_list=(
 	models_pose_v0_10_heavy[@]		
 )
 
+
 # these models worked
 models_list=(
 	models_hand_v0_07[@]
@@ -43,6 +44,7 @@ models_list=(
 	models_hand_v0_10_lite[@]
 	models_hand_v0_10_full[@]
 )
+
 
 models_count=${#models_list[@]}
 #echo $models_count
@@ -62,8 +64,8 @@ do
 	model2_size=${models_array[5]}
 	dfp_name=${models_array[6]}
 
-	echo python3 memryx_flow_dual.py --arch mx3 --dfp ${dfp_name} --name1 ${model1_name} --model1 ${model1_file} --resolution1 ${model1_size} --name2 ${model2_name} --model2 ${model2_file} --resolution2 ${model2_size} --process all
+	echo python3 memryx_flow_dual.py --arch mx3 --dfp ${dfp_name} --name1 ${model1_name} --model1 ${model1_file} --resolution1 ${model1_size} --name2 ${model2_name} --model2 ${model2_file} --resolution2 ${model2_size} --process inspect
 
-	python3 memryx_flow_dual.py --arch mx3 --dfp ${dfp_name} --name1 ${model1_name} --model1 ${model1_file} --resolution1 ${model1_size} --name2 ${model2_name} --model2 ${model2_file} --resolution2 ${model2_size} --process all | tee deploy_${dfp_name}.log
+	python3 memryx_flow_dual.py --arch mx3 --dfp ${dfp_name} --name1 ${model1_name} --model1 ${model1_file} --resolution1 ${model1_size} --name2 ${model2_name} --model2 ${model2_file} --resolution2 ${model2_size} --process inspect | tee inspect_${dfp_name}.log
 
 done
