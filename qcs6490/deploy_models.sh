@@ -38,15 +38,8 @@ model_list=(
 )
 
 model_list=(
-	model_palm_detector_v0_07[@]
-	model_hand_landmark_v0_07[@]
 	model_palm_detector_v0_10_lite[@]
-	model_palm_detector_v0_10_full[@]
 	model_hand_landmark_v0_10_lite[@]
-	model_hand_landmark_v0_10_full[@]
-	model_face_detector_v0_10_short[@]
-	model_face_detector_v0_10_full[@]
-	model_face_landmark_v0_10[@]		
 )
 
 model_count=${#model_list[@]}

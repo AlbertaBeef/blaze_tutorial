@@ -5,6 +5,11 @@ import os
 
 import qai_hub as hub
 
+# Verbose Info about QAI Hub Workbench
+supported_frameworks = hub.get_frameworks()
+print(supported_frameworks)
+#[Framework(name='QAIRT', api_version='2.37', api_tags=[], full_version='2.37.1.250807093845_124904'), Framework(name='QAIRT', api_version='2.40', api_tags=['default'], full_version='2.40.0.251030114326_189385'), Framework(name='QAIRT', api_version='2.41', api_tags=['latest'], full_version='2.41.0.251128145156_191518')]
+
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
 ap.add_argument('-a', '--arch'       , type=str,  default="Dragonwing RB3 Gen 2 Vision Kit", help="Qualcomm Target Device.  Default is 'Dragonwing RB3 Gen 2 Vision Kit'.")
@@ -31,7 +36,10 @@ input_shape = (1, args.resolution, args.resolution, 3)
 # Create Calibration Data
 # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.b)
 
-if True:
+print(f"[INFO] Creating Calibration Data ...")
+
+try:
+
     if model_name == "palm_detection_v0_07":
         # Specify calibration dataset
         calib_dataset_file = "calib_palm_detection_256_dataset.npy"
@@ -111,74 +119,276 @@ if True:
         "| range = ", np.min(np.min(calibration_data["input"])), "-", np.max(np.max(calibration_data["input"])) 
         )
 
+    print(f"[SUCCESS] Creating Calibration Data !")
+
+except Exception as e:
+    print(f"[ERROR] Creating Calibration Data ... ({e})")
 
 #
 # Submit Compile Job
 # Reference : https://aihub.qualcomm.com/get-started#workbench (sections 3 & 7.a)
 #
 
-# Submit compile job for the TFLite model
-compile_job = hub.submit_compile_job(
-    model=model_path,
-    device=device,
-    input_specs={"input": input_shape},
-    options="--target_runtime onnx"
-)
+print(f"[INFO] Quantizing Model ...")
 
-# Wait for completion and fetch the target-optimized model
-unquantized_onnx_model = compile_job.get_target_model()
+try:
+    # Submit compile job for the TFLite model
+    compile_job = hub.submit_compile_job(
+        model=model_path,
+        device=device,
+        name=model_name+"_compile_unquantized_onnx_model",
+        input_specs={"input": input_shape},
+        options="--target_runtime onnx"
+    )
 
-#
-# Submit Profile Job
-# Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
-#
+    # Wait for completion and fetch the target-optimized model
+    unquantized_onnx_model = compile_job.get_target_model()
 
-# Submit profile job
-profile_job = hub.submit_profile_job(
-    model=unquantized_onnx_model,
-    device=device,
-)
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #
 
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=unquantized_onnx_model,
+        device=device,
+        name=model_name+"_profile_unquantized_onnx_model",
+    )
 
-#
-# Submit Quantization Job
-# Reference : https://aihub.qualcomm.com/get-started#workbench
-#
+    #
+    # Submit Quantization Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench
+    #
 
-# Submit quantize job
-quantize_job = hub.submit_quantize_job(
-    model=unquantized_onnx_model,
-    calibration_data=calibration_data,
-    weights_dtype=hub.QuantizeDtype.INT8,
-    activations_dtype=hub.QuantizeDtype.INT8,
-)
+    # Submit quantize job
+    quantize_job = hub.submit_quantize_job(
+        model=unquantized_onnx_model,
+        name=model_name+"_quantize_model",
+        calibration_data=calibration_data,
+        weights_dtype=hub.QuantizeDtype.INT8,
+        activations_dtype=hub.QuantizeDtype.INT8,
+    )
 
-# Wait for completion and fetch the quantized model
-quantized_onnx_model = quantize_job.get_target_model()
+    # Wait for completion and fetch the quantized model
+    quantized_onnx_model = quantize_job.get_target_model()
 
-#
-# Submit Optimize Job
-# Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
-#
+    print(f"[SUCCESS] Quantizing Model !")
 
-# Optimize model for the chosen device
-compile_job = hub.submit_compile_job(
+except Exception as e:
+    print(f"[ERROR] Quantizing Model ... ({e})")
+
+#################################
+# TFLite runtime (QNN Delegate)
+#################################
+
+print(f"[INFO] Targeting TFLite runtime ...")
+
+try:
+
+    #
+    # Submit Optimize Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #
+
+    # Optimize model for the chosen device
+    compile_job = hub.submit_compile_job(
         model=quantized_onnx_model,
         device=device,
+        name=model_name+"_compile_target_runtime_tflite",
         input_specs={"input": input_shape},
         options="--target_runtime tflite"
-)
-target_model = compile_job.get_target_model()
+    )
+    target_model = compile_job.get_target_model()
 
-target_model.download(model_name+".tflite")
+    target_model.download(model_name+".tflite")
 
-#
-# Submit Profile Job
-# Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
-#
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #
 
-# Submit profile job
-profile_job = hub.submit_profile_job(
-    model=target_model,
-    device=device,
-)
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=target_model,
+        device=device,
+        name=model_name+"_profile_target_runtime_tflite",
+    )
+
+    print(f"[SUCCESS] Targeting TFLite runtime !")
+
+except Exception as e:
+    print(f"[ERROR] Targeting TFLite runtime ... ({e})")
+
+#################################
+# ONNX runtime
+#################################
+
+print(f"[INFO] Targeting ONNX runtime ...")
+
+try:
+
+    #
+    # Submit Optimize Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #
+
+    # Optimize model for the chosen device
+    compile_job = hub.submit_compile_job(
+        model=quantized_onnx_model,
+        device=device,
+        name=model_name+"_compile_target_runtime_onnx",
+        input_specs={"input": input_shape},
+        options="--target_runtime onnx"
+    )
+    target_model = compile_job.get_target_model()
+
+    target_model.download(model_name+".onnx")
+
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # Reference : https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    #
+
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=target_model,
+        device=device,
+        name=model_name+"_profile_target_runtime_onnx",
+        options="--onnx_execution_providers=qnn",    
+    )
+
+    print(f"[SUCCESS] Targeting ONNX runtime !")
+
+except Exception as e:
+    print(f"[ERROR] Targeting ONNX runtime ... ({e})")
+
+#################################
+# DLC
+#################################
+
+print(f"[INFO] Targeting DLC ...")
+
+try:
+
+    #
+    # Submit Optimize Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #
+
+    # Optimize model for the chosen device
+    compile_job = hub.submit_compile_job(
+        model=quantized_onnx_model,
+        device=device,
+        name=model_name+"_compile_target_runtime_qnn_dlc",
+        input_specs={"input": input_shape},
+        options="--target_runtime qnn_dlc"
+    )
+    target_model = compile_job.get_target_model()
+
+    target_model.download(model_name+".dlc")
+
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #
+
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=target_model,
+        device=device,
+        name=model_name+"_profile_target_runtime_qnn_dlc",
+    )
+
+    print(f"[SUCCESS] Targeting DLC !")
+
+except Exception as e:
+    print(f"[ERROR] Targeting DLC ... ({e})")
+
+#################################
+# QNN Context Binary
+#################################
+
+print(f"[INFO] Targeting QNN Context Binary ...")
+
+try:
+
+    #
+    # Submit Optimize Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #
+
+    # Optimize model for the chosen device
+    compile_job = hub.submit_compile_job(
+        model=quantized_onnx_model,
+        device=device,
+        name=model_name+"_compile_target_runtime_qnn_context_binary",
+        input_specs={"input": input_shape},
+        options="--target_runtime qnn_context_binary",
+    )
+
+    target_model = compile_job.get_target_model()
+
+    target_model.download(model_name+".bin")
+
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #
+
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=target_model,
+        device=device,
+        name=model_name+"_profile_target_runtime_qnn_context_binary",
+    )
+
+    print(f"[SUCCESS] Targeting QNN Context Binary !")
+    
+except Exception as e:
+    print(f"[ERROR] Targeting QNN Context Binary ... ({e})")
+
+#################################
+# Pre-compiled QNN ONNX
+#################################
+
+print(f"[INFO] Targeting Pre-compiled QNN ONNX ...")
+
+try:
+
+    #
+    # Submit Optimize Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #
+
+    # Optimize model for the chosen device
+    compile_job = hub.submit_compile_job(
+        model=quantized_onnx_model,
+        device=device,
+        name=model_name+"_compile_target_runtime_precompiled_qnn_onnx",
+        input_specs={"input": input_shape},
+        options="--target_runtime precompiled_qnn_onnx",
+    )
+
+    target_model = compile_job.get_target_model()
+
+    target_model.download(model_name+"_qnn.onnx")
+
+    #
+    # Submit Profile Job
+    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #
+
+    # Submit profile job
+    profile_job = hub.submit_profile_job(
+        model=target_model,
+        device=device,
+        name=model_name+"_profile_target_runtime_precompiled_qnn_onnx",
+        options="--onnx_execution_providers=qnn",    
+    )
+
+    print(f"[SUCCESS] Targeting Pre-compiled QNN ONNX !")
+
+except Exception as e:
+    print(f"[ERROR] Targeting Pre-compiled QNN ONNX ... ({e})")
