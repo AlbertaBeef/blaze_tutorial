@@ -421,7 +421,7 @@ try:
 
     target_model = compile_job.get_target_model()
 
-    target_model.download(model_name+"pre_compiled_qnn") # .onnx.zip will be appended to generated archive
+    target_model.download(model_name+"_pre_compiled_qnn") # .onnx.zip will be appended to generated archive
     
     #
     # Submit Profile Job

@@ -1,6 +1,8 @@
 models/*.tflite
 models/*.onnx
-*.tflite
-*.zip
 *.npy
+*.tflite
+*.onnx
+*.zip
 *.dlc
+*.bin
