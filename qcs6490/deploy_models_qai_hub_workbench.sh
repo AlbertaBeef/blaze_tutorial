@@ -24,10 +24,10 @@ model_list=(
 model_list=(
 	model_palm_detector_v0_07[@]
 	model_hand_landmark_v0_07[@]
-	model_palm_detector_v0_10_lite[@]
 	model_palm_detector_v0_10_full[@]
-	model_hand_landmark_v0_10_lite[@]
 	model_hand_landmark_v0_10_full[@]
+	model_palm_detector_v0_10_lite[@]
+	model_hand_landmark_v0_10_lite[@]
 	model_face_detector_v0_10_short[@]
 	model_face_detector_v0_10_full[@]
 	model_face_landmark_v0_10[@]	
@@ -37,18 +37,9 @@ model_list=(
 	model_pose_landmark_v0_10_heavy[@]		
 )
 
-model_list=(
-	model_palm_detector_v0_10_lite[@]
-	model_hand_landmark_v0_10_lite[@]
-)
-
 model_count=${#model_list[@]}
 #echo $model_count
 
-
-# Compile/Quantize/Deploy with QAI-HUB Workbench
-# Reference :
-#    https://aihub.qualcomm.com/get-started#workbench
 
 for ((i=0; i<$model_count; i++))
 do
@@ -58,8 +49,8 @@ do
 	model_file=${model_array[1]}
 	input_resolution=${model_array[2]}
 
-	echo python3 qai_workbench_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution}
+	echo python3 qai_hub_workbench_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution}
 
-	python3 qai_workbench_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} | tee deploy_${model_name}.log
+	python3 qai_hub_workbench_flow.py --name ${model_name} --model ${model_file} --resolution ${input_resolution} | tee deploy_${model_name}.log
 
 done

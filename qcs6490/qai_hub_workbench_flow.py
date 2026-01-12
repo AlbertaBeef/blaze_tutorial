@@ -33,8 +33,9 @@ model_name = args.name
 device = device = hub.Device(args.arch)
 input_shape = (1, args.resolution, args.resolution, 3)
 
-# Create Calibration Data
-# Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.b)
+#################################
+# Calibration Data
+#################################
 
 print(f"[INFO] Creating Calibration Data ...")
 
@@ -99,6 +100,12 @@ try:
         "| range = ", np.min(np.min(calib_dataset)), "-", np.max(np.max(calib_dataset)) 
         )
 
+    #
+    # Create Calibration Data
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.b)
+    #
+
     nb_images = calib_dataset.shape[0]
     sample_inputs = []
     for i in range(nb_images):
@@ -124,15 +131,21 @@ try:
 except Exception as e:
     print(f"[ERROR] Creating Calibration Data ... ({e})")
 
-#
-# Submit Compile Job
-# Reference : https://aihub.qualcomm.com/get-started#workbench (sections 3 & 7.a)
-#
+#################################
+# Model Quantization
+#################################
 
 print(f"[INFO] Quantizing Model ...")
 
 try:
-    # Submit compile job for the TFLite model
+    #
+    # Submit Compile Job
+    # References
+    #    https://aihub.qualcomm.com/get-started#workbench (sections 3 & 7.a)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
+    #
+    
     compile_job = hub.submit_compile_job(
         model=model_path,
         device=device,
@@ -146,7 +159,10 @@ try:
 
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
@@ -158,7 +174,10 @@ try:
 
     #
     # Submit Quantization Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_quantize_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-quantize-options
     #
 
     # Submit quantize job
@@ -187,8 +206,11 @@ print(f"[INFO] Targeting TFLite runtime ...")
 try:
 
     #
-    # Submit Optimize Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    # Submit Compile Job
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
     #
 
     # Optimize model for the chosen device
@@ -197,7 +219,7 @@ try:
         device=device,
         name=model_name+"_compile_target_runtime_tflite",
         input_specs={"input": input_shape},
-        options="--target_runtime tflite"
+        options="--target_runtime tflite --quantize_io true --quantize_io_type int8"
     )
     target_model = compile_job.get_target_model()
 
@@ -205,7 +227,10 @@ try:
 
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
@@ -229,8 +254,11 @@ print(f"[INFO] Targeting ONNX runtime ...")
 try:
 
     #
-    # Submit Optimize Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    # Submit Compile Job
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
     #
 
     # Optimize model for the chosen device
@@ -239,16 +267,19 @@ try:
         device=device,
         name=model_name+"_compile_target_runtime_onnx",
         input_specs={"input": input_shape},
-        options="--target_runtime onnx"
+        options="--target_runtime onnx --quantize_io true"
     )
     target_model = compile_job.get_target_model()
 
-    target_model.download(model_name+".onnx")
+    target_model.download(model_name+"_onnx_runtime") # .onnx.zip will be appended to generated archive
 
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
-    # Reference : https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
@@ -273,9 +304,12 @@ print(f"[INFO] Targeting DLC ...")
 try:
 
     #
-    # Submit Optimize Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
-    #
+    # Submit Compile Job
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
+    # 
 
     # Optimize model for the chosen device
     compile_job = hub.submit_compile_job(
@@ -283,7 +317,7 @@ try:
         device=device,
         name=model_name+"_compile_target_runtime_qnn_dlc",
         input_specs={"input": input_shape},
-        options="--target_runtime qnn_dlc"
+        options="--target_runtime qnn_dlc --quantize_io true"
     )
     target_model = compile_job.get_target_model()
 
@@ -291,7 +325,11 @@ try:
 
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
@@ -315,8 +353,11 @@ print(f"[INFO] Targeting QNN Context Binary ...")
 try:
 
     #
-    # Submit Optimize Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    # Submit Compile Job
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
     #
 
     # Optimize model for the chosen device
@@ -325,7 +366,7 @@ try:
         device=device,
         name=model_name+"_compile_target_runtime_qnn_context_binary",
         input_specs={"input": input_shape},
-        options="--target_runtime qnn_context_binary",
+        options="--target_runtime qnn_context_binary --quantize_io true",
     )
 
     target_model = compile_job.get_target_model()
@@ -334,7 +375,11 @@ try:
 
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
@@ -358,8 +403,11 @@ print(f"[INFO] Targeting Pre-compiled QNN ONNX ...")
 try:
 
     #
-    # Submit Optimize Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    # Submit Compile Job
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 7.c)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-compile-options
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_compile_job.html
     #
 
     # Optimize model for the chosen device
@@ -368,16 +416,20 @@ try:
         device=device,
         name=model_name+"_compile_target_runtime_precompiled_qnn_onnx",
         input_specs={"input": input_shape},
-        options="--target_runtime precompiled_qnn_onnx",
+        options="--target_runtime precompiled_qnn_onnx --quantize_io true",
     )
 
     target_model = compile_job.get_target_model()
 
-    target_model.download(model_name+"_qnn.onnx")
-
+    target_model.download(model_name+"pre_compiled_qnn") # .onnx.zip will be appended to generated archive
+    
     #
     # Submit Profile Job
-    # Reference : https://aihub.qualcomm.com/get-started#workbench (section 6)
+    # References : 
+    #    https://aihub.qualcomm.com/get-started#workbench (section 6)
+    #    https://workbench.aihub.qualcomm.com/docs/hub/profile_examples.html#profile-previously-compiled
+    #    https://workbench.aihub.qualcomm.com/docs/hub/generated/qai_hub.submit_profile_job.html
+    #    https://workbench.aihub.qualcomm.com/docs/hub/api.html#api-profile-and-inference-options
     #
 
     # Submit profile job
