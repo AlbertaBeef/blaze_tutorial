@@ -1,3 +1,13 @@
+# Setup: create a temporary venv with compatible tf2onnx + numpy
+# (tf2onnx is incompatible with the Voyager SDK venv due to protobuf/numpy version conflicts)
+VENV_DIR="/tmp/tf2onnx_venv"
+if [ ! -d "$VENV_DIR" ]; then
+	echo "[INFO] Creating temporary venv for tf2onnx ..."
+	/usr/bin/python3 -m venv $VENV_DIR
+	$VENV_DIR/bin/pip install tf2onnx tensorflow "numpy<2" 2>&1 | tail -3
+fi
+TF2ONNX_PYTHON=$VENV_DIR/bin/python3
+
 #model_palm_detector_v0_07=("palm_detection_v0_07","palm_detection_v0_07.tflite")
 model_palm_detector_v0_07=("palm_detection_v0_07","palm_detection_without_custom_op.tflite")
 model_hand_landmark_v0_07=("hand_landmark_v0_07","hand_landmark_v0_07.tflite")
@@ -11,8 +21,6 @@ model_face_landmark_v0_07=("face_landmark_v0_07","face_landmark_v0_07.tflite")
 model_face_detector_v0_10_full=("face_detection_full_range","face_detection_full_range.tflite")
 model_face_detector_v0_10_short=("face_detection_short_range","face_detection_short_range.tflite")
 model_face_landmark_v0_10=("face_landmark","face_landmark.tflite")
-model_pose_detector_v0_07=("pose_detection_v0_07","pose_detection_v0_07.tflite")
-model_pose_landmark_v0_07_upper=("pose_landmark_v0_07_upper_body","pose_landmark_v0_07_upper_body.tflite")
 model_pose_detector_v0_10=("pose_detection","pose_detection.tflite")
 model_pose_landmark_v0_10_lite=("pose_landmark_lite","pose_landmark_lite.tflite")
 model_pose_landmark_v0_10_full=("pose_landmark_full","pose_landmark_full.tflite")
@@ -20,24 +28,21 @@ model_pose_landmark_v0_10_heavy=("pose_landmark_heavy","pose_landmark_heavy.tfli
 model_list=(
 	model_palm_detector_v0_07[@]
 	model_hand_landmark_v0_07[@]
-	
+
 	model_palm_detector_v0_10_lite[@]
 	model_palm_detector_v0_10_full[@]
 	model_hand_landmark_v0_10_lite[@]
 	model_hand_landmark_v0_10_full[@]
-	
+
 	model_face_detector_v0_07_front[@]
 	model_face_detector_v0_07_back[@]
 	model_face_landmark_v0_07[@]
-	
+
 	model_face_detector_v0_10_full[@]
 	model_face_detector_v0_10_short[@]
 	model_face_landmark_v0_10[@]
-	
-	model_pose_detector_v0_07[@]
-	model_pose_landmark_v0_07_upper[@]
 
-	model_pose_detector_v0_10	
+	model_pose_detector_v0_10[@]
 	model_pose_landmark_v0_10_lite[@]
 	model_pose_landmark_v0_10_full[@]
 	model_pose_landmark_v0_10_heavy[@]
@@ -55,7 +60,7 @@ do
 	model_name=${model_array[0]}
 	model_file=${model_array[1]}
 
-	echo python3 -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
-	python3 -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
-	
+	echo $TF2ONNX_PYTHON -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
+	$TF2ONNX_PYTHON -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
+
 done
