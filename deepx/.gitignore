@@ -1,0 +1,10 @@
+models/*.tflite
+models/*.onnx
+*.npy
+*.tflite
+*.onnx
+*.log
+*.zip
+configs/
+compiled_*/
+*.dxnn
