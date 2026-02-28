@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Cross-platform hardware accelerator benchmark and tutorial for deploying Google MediaPipe Blaze models (face detection, hand tracking, pose estimation) on five embedded AI accelerator ecosystems. The same model family is quantized, compiled, and deployed across all targets. Copyright 2024 Avnet Inc., Apache 2.0 license.
+Cross-platform hardware accelerator benchmark and tutorial for deploying Google MediaPipe Blaze models (face detection, hand tracking, pose estimation) on five embedded AI accelerator ecosystems. The same model family is quantized, compiled, and deployed across all targets. 
 
 Hackster guides: http://avnet.me/mediapipe-03-vitis-ai-3.5 (Vitis-AI), http://avnet.me/mediapipe-04-hailo-8 (Hailo-8).
 

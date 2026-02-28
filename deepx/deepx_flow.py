@@ -1,4 +1,3 @@
-# Copyright 2024 Avnet Inc.
 # Licensed under the Apache License, Version 2.0
 #
 # DeepX M1 compilation flow for MediaPipe Blaze models
@@ -147,7 +146,7 @@ ap.add_argument('-k', '--calib_num',    type=int, default=100,
 ap.add_argument('-s', '--shrink',       action='store_true',
                 help="Use --shrink flag for minimal deterministic output.")
 ap.add_argument('-o', '--output',       type=str, default=None,
-                help="Output directory. Default is 'compiled_<name>'.")
+                help="Output directory. Default is '<name>'.dxnn")
 
 args = ap.parse_args()
 
@@ -353,13 +352,13 @@ print(f"[SUCCESS] JSON configuration generated !")
 
 print(f"[INFO] Compiling model with DX-COM ...")
 
-output_dir = args.output if args.output else f"compiled_{model_name}"
+output_path = args.output if args.output else f"{model_name}.dxnn"
 
 cmd = [
     "dxcom",
     "-m", model_path,
     "-c", config_path,
-    "-o", output_dir,
+    "-o", output_path,
 ]
 if args.shrink:
     cmd.append("--shrink")
@@ -369,7 +368,7 @@ print(f"[INFO] Command: {' '.join(cmd)}")
 try:
     result = subprocess.run(cmd, text=True)
     if result.returncode == 0:
-        print(f"[SUCCESS] Model compiled ! Output directory: {output_dir}")
+        print(f"[SUCCESS] Model compiled ! Output path: {output_path}")
     else:
         print(f"[ERROR] dxcom returned exit code {result.returncode}")
         sys.exit(1)
