@@ -7,9 +7,9 @@
 # to a .dxnn binary for the DeepX M1 NPU.
 #
 # Prerequisites:
-#   1. DX-COM compiler (dx_com) must be installed and on PATH
+#   1. DX-COM compiler (dxcom) must be installed and on PATH
 #      - See deepx/DeepX_Software_Tooling.md for installation instructions
-#      - Verify with: dx_com -v
+#      - Verify with: dxcom -v
 #
 #   2. ONNX models must be prepared:
 #      cd deepx/models
@@ -27,7 +27,7 @@
 #      - calib_pose_detection_224_dataset.npy
 #      - calib_pose_landmark_256_dataset.npy
 #
-#   4. Python packages: numpy (for calibration data verification)
+#   4. Python packages: numpy, cv2 (opencv-python)
 #      Optional: onnx (for auto-detecting ONNX input tensor names)
 #
 # Usage:
@@ -35,6 +35,7 @@
 #   python3 deepx_flow.py --name palm_detection_lite --model models/palm_detection_lite.onnx --resolution 192 --calib_method ema --shrink
 
 import numpy as np
+import cv2
 import json
 import subprocess
 import argparse
@@ -181,8 +182,8 @@ else:
     input_name = "input_1"
     calib_dataset_file = f"calib_{model_name}_{resolution}_dataset.npy"
 
-# DX-COM expects NCHW input shape (ONNX convention)
-input_shape = [1, 3, resolution, resolution]
+# tf2onnx preserves TFLite's NHWC layout for these models
+input_shape = [1, resolution, resolution, 3]
 
 print(f"[INFO] Input name     : {input_name}")
 print(f"[INFO] Input shape    : {input_shape}")
@@ -228,35 +229,75 @@ if not os.path.isfile(calib_dataset_file):
     print(f"[INFO]  Place calibration .npy files in the deepx/ directory.")
     sys.exit(1)
 
-# Verify calibration dataset shape
-calib_dataset = np.load(calib_dataset_file)
-print(f"[INFO] Calib dataset  : shape={calib_dataset.shape}, dtype={calib_dataset.dtype}, "
-      f"range={np.min(calib_dataset)}-{np.max(calib_dataset)}")
-expected_shape_suffix = (resolution, resolution, 3)
-if calib_dataset.shape[1:] != expected_shape_suffix:
-    print(f"[WARNING] Calib dataset shape {calib_dataset.shape} does not match "
-          f"expected (N, {resolution}, {resolution}, 3)")
-del calib_dataset  # free memory
-
-# Check dx_com is available
+# Check dxcom is available
 try:
-    result = subprocess.run(["dx_com", "-v"], capture_output=True, text=True, timeout=10)
-    print(f"[INFO] dx_com version: {result.stdout.strip()}")
+    result = subprocess.run(["dxcom", "-v"], capture_output=True, text=True, timeout=10)
+    print(f"[INFO] dxcom version: {result.stdout.strip()}")
 except FileNotFoundError:
-    print(f"[ERROR] dx_com not found on PATH.")
+    print(f"[ERROR] dxcom not found on PATH.")
     print(f"[INFO]  Install the DeepX DX-COM compiler.")
     print(f"[INFO]  See deepx/DeepX_Software_Tooling.md for installation instructions.")
     sys.exit(1)
 except subprocess.TimeoutExpired:
-    print(f"[WARNING] dx_com -v timed out, proceeding anyway ...")
+    print(f"[WARNING] dxcom -v timed out, proceeding anyway ...")
 except Exception as e:
-    print(f"[WARNING] Could not verify dx_com: {e}")
+    print(f"[WARNING] Could not verify dxcom: {e}")
 
 print(f"[SUCCESS] Prerequisites verified !")
 
 #################################
+# Extract Calibration Images
+#################################
+# DX-COM expects a directory of image files (jpeg/png),
+# not .npy arrays. Extract images from the .npy calibration
+# dataset and save as JPEG files.
+
+print(f"[INFO] Extracting calibration images from {calib_dataset_file} ...")
+
+calib_images_dir = f"calibration_data/{model_name}"
+os.makedirs(calib_images_dir, exist_ok=True)
+
+# Check if images already extracted
+existing_images = [f for f in os.listdir(calib_images_dir) if f.endswith('.jpg')]
+calib_dataset = np.load(calib_dataset_file)
+nb_images = calib_dataset.shape[0]
+
+print(f"[INFO] Calib dataset  : shape={calib_dataset.shape}, dtype={calib_dataset.dtype}, "
+      f"range={np.min(calib_dataset)}-{np.max(calib_dataset)}")
+
+if len(existing_images) >= nb_images:
+    print(f"[INFO] Calibration images already extracted ({len(existing_images)} images)")
+else:
+    print(f"[INFO] Extracting {nb_images} images to {calib_images_dir}/ ...")
+    for i in range(nb_images):
+        # calib_dataset[i] is (H, W, 3) uint8 RGB
+        image_rgb = calib_dataset[i]
+        # Convert RGB to BGR for cv2.imwrite
+        image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+        cv2.imwrite(os.path.join(calib_images_dir, f"{i}.jpg"), image_bgr)
+    print(f"[SUCCESS] Extracted {nb_images} calibration images !")
+
+del calib_dataset  # free memory
+
+#################################
 # Generate JSON Configuration
 #################################
+# DX-COM JSON config format (from sample configs):
+#   - inputs: ONNX input name -> NCHW shape
+#   - calibration_method: "minmax" or "ema"
+#   - calibration_num: number of calibration steps
+#   - default_loader:
+#       - dataset_path: directory of image files
+#       - file_extensions: list of image extensions
+#       - preprocessings: list of preprocessing operations
+#
+# MediaPipe Blaze models expect float32 input in [0, 1] range, NHWC layout.
+# tf2onnx preserves the TFLite NHWC layout, so no transpose needed.
+# The preprocessings pipeline:
+#   1. resize to model resolution
+#   2. convertColor BGR2RGB (cv2 loads as BGR)
+#   3. div by 255.0 (normalize to [0, 1])
+#   4. expandDim to add batch dimension
 
 print(f"[INFO] Generating JSON configuration ...")
 
@@ -267,9 +308,31 @@ config = {
     "calibration_method": args.calib_method,
     "calibration_num": args.calib_num,
     "default_loader": {
-        "dataset_path": calib_dataset_file,
-        "file_extensions": [".npy"],
-        "preprocessing": {}
+        "dataset_path": f"./{calib_images_dir}",
+        "file_extensions": ["jpeg", "jpg", "png", "JPEG"],
+        "preprocessings": [
+            {
+                "resize": {
+                    "width": resolution,
+                    "height": resolution
+                }
+            },
+            {
+                "convertColor": {
+                    "form": "BGR2RGB"
+                }
+            },
+            {
+                "div": {
+                    "x": 255.0
+                }
+            },
+            {
+                "expandDim": {
+                    "axis": 0
+                }
+            }
+        ]
     }
 }
 
@@ -293,7 +356,7 @@ print(f"[INFO] Compiling model with DX-COM ...")
 output_dir = args.output if args.output else f"compiled_{model_name}"
 
 cmd = [
-    "dx_com",
+    "dxcom",
     "-m", model_path,
     "-c", config_path,
     "-o", output_dir,
@@ -308,7 +371,7 @@ try:
     if result.returncode == 0:
         print(f"[SUCCESS] Model compiled ! Output directory: {output_dir}")
     else:
-        print(f"[ERROR] dx_com returned exit code {result.returncode}")
+        print(f"[ERROR] dxcom returned exit code {result.returncode}")
         sys.exit(1)
 except Exception as e:
     print(f"[ERROR] Compilation failed: {e}")

@@ -6,5 +6,6 @@ models/*.onnx
 *.log
 *.zip
 configs/
+calibration_data/
 compiled_*/
 *.dxnn

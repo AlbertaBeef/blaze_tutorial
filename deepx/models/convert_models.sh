@@ -60,7 +60,7 @@ do
 	model_name=${model_array[0]}
 	model_file=${model_array[1]}
 
-	echo $TF2ONNX_PYTHON -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
-	$TF2ONNX_PYTHON -m tf2onnx.convert --opset 12 --tflite ${model_file} --output ${model_name}.onnx
+	echo $TF2ONNX_PYTHON -m tf2onnx.convert --opset 17 --tflite ${model_file} --output ${model_name}.onnx
+	$TF2ONNX_PYTHON -m tf2onnx.convert --opset 17 --tflite ${model_file} --output ${model_name}.onnx
 
 done
